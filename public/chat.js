@@ -1,90 +1,60 @@
 var token = localStorage.getItem('token');
 var currentUser = JSON.parse(localStorage.getItem('user'));
 
-if (!token || !currentUser) {
-  window.location.href = '/';
-}
+if (!token || !currentUser) window.location.href = '/';
 
-var socket;
 var selectedUser = null;
 var allUsers = [];
-var typingTimer = null;
+var lastMessageTime = null;
+var pollInterval = null;
+var userPollInterval = null;
 
 var COLORS = ['#6c63ff', '#f59e0b', '#10b981', '#ef4444', '#3b82f6', '#ec4899'];
 
 function getColor(name) {
-  var i = name.charCodeAt(0) % COLORS.length;
-  return COLORS[i];
+  return COLORS[name.charCodeAt(0) % COLORS.length];
 }
 
-window.onload = function() {
+// ── Init ──────────────────────────────────────────────────────────────────────
+
+window.onload = function () {
   document.getElementById('myUsername').textContent = currentUser.username;
   document.getElementById('myAvatar').textContent = currentUser.username[0].toUpperCase();
   document.getElementById('myAvatar').style.background = getColor(currentUser.username);
 
+  setOnlineStatus(true);
   loadUsers();
-  connectSocket();
+
+  // Refresh user list (online status) every 10s
+  userPollInterval = setInterval(loadUsers, 10000);
+
+  // Mark offline on tab close
+  window.addEventListener('beforeunload', () => setOnlineStatus(false));
 };
 
-function connectSocket() {
-  socket = io({ auth: { token: token }, transports: ['polling', 'websocket'] });
+// ── API helpers ───────────────────────────────────────────────────────────────
 
-  socket.on('connect_error', function(err) {
-    if (err.message === 'Invalid token' || err.message === 'No token') {
-      logout();
-    }
-  });
-
-  socket.on('new_message', function(msg) {
-    var senderId = msg.sender._id;
-    var receiverId = msg.receiver._id;
-
-    if (selectedUser) {
-      var isMyMessage = senderId === currentUser.id;
-      var otherPersonId = isMyMessage ? receiverId : senderId;
-
-      if (otherPersonId === selectedUser._id) {
-        showMessage(msg);
-        scrollDown();
-      }
-    }
-
-    var otherId = senderId === currentUser.id ? receiverId : senderId;
-    updatePreview(otherId, msg.content);
-  });
-
-  socket.on('typing', function(data) {
-    if (selectedUser && data.senderId === selectedUser._id) {
-      var el = document.getElementById('typingIndicator');
-      if (data.isTyping) {
-        el.textContent = selectedUser.username + ' is typing...';
-        el.style.display = 'block';
-      } else {
-        el.style.display = 'none';
-      }
-    }
-  });
-
-  socket.on('user_online', function(data) {
-    updateUserStatus(data.userId, true);
-  });
-
-  socket.on('user_offline', function(data) {
-    updateUserStatus(data.userId, false);
+function api(method, url, body) {
+  return fetch(url, {
+    method,
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+    body: body ? JSON.stringify(body) : undefined
+  }).then(function (res) {
+    if (res.status === 401) logout();
+    return res.json();
   });
 }
 
+function setOnlineStatus(isOnline) {
+  api('POST', '/api/status', { isOnline });
+}
+
+// ── Users ─────────────────────────────────────────────────────────────────────
+
 async function loadUsers() {
-  var res = await fetch('/api/users', {
-    headers: { Authorization: 'Bearer ' + token }
-  });
-
-  if (res.status === 401) {
-    logout();
-    return;
-  }
-
-  allUsers = await res.json();
+  const users = await api('GET', '/api/users');
+  if (!Array.isArray(users)) return;
+  allUsers = users;
   renderUsers();
 }
 
@@ -93,13 +63,12 @@ function renderUsers() {
   var list = document.getElementById('usersList');
   list.innerHTML = '';
 
-  allUsers.forEach(function(user) {
+  allUsers.forEach(function (user) {
     if (search && !user.username.toLowerCase().includes(search)) return;
 
     var li = document.createElement('li');
     li.className = 'user-item' + (selectedUser && selectedUser._id === user._id ? ' active' : '');
-    li.onclick = function() { openChat(user); };
-
+    li.onclick = function () { openChat(user); };
     li.innerHTML =
       '<div class="user-avatar" style="background:' + getColor(user.username) + '">' +
         user.username[0].toUpperCase() +
@@ -111,33 +80,58 @@ function renderUsers() {
           (user.isOnline ? 'Online' : 'Offline') +
         '</span>' +
       '</div>';
-
     list.appendChild(li);
   });
 }
 
+function filterUsers() { renderUsers(); }
+
+// ── Chat ──────────────────────────────────────────────────────────────────────
+
 async function openChat(user) {
   selectedUser = user;
+  lastMessageTime = null;
   renderUsers();
 
   document.getElementById('emptyState').style.display = 'none';
   document.getElementById('chatArea').style.display = 'flex';
-
   document.getElementById('chatAvatar').textContent = user.username[0].toUpperCase();
   document.getElementById('chatAvatar').style.background = getColor(user.username);
   document.getElementById('chatUsername').textContent = user.username;
   document.getElementById('chatStatus').textContent = user.isOnline ? 'Online' : 'Offline';
-
   document.getElementById('messagesList').innerHTML = '';
 
-  var res = await fetch('/api/messages/' + user._id, {
-    headers: { Authorization: 'Bearer ' + token }
-  });
-  var messages = await res.json();
-  messages.forEach(function(msg) { showMessage(msg); });
-  scrollDown();
+  // Load history
+  const messages = await api('GET', '/api/messages/' + user._id);
+  if (Array.isArray(messages)) {
+    messages.forEach(showMessage);
+    if (messages.length) lastMessageTime = messages[messages.length - 1].createdAt;
+    scrollDown();
+  }
 
   document.getElementById('messageInput').focus();
+
+  // Start polling for new messages every 2s
+  clearInterval(pollInterval);
+  pollInterval = setInterval(pollMessages, 2000);
+}
+
+async function pollMessages() {
+  if (!selectedUser) return;
+  var url = '/api/messages/' + selectedUser._id + '/poll';
+  if (lastMessageTime) url += '?since=' + encodeURIComponent(lastMessageTime);
+
+  const messages = await api('GET', url);
+  if (!Array.isArray(messages) || !messages.length) return;
+
+  messages.forEach(showMessage);
+  lastMessageTime = messages[messages.length - 1].createdAt;
+  scrollDown();
+
+  // Update preview
+  var last = messages[messages.length - 1];
+  var otherId = last.sender._id === currentUser.id ? last.receiver._id : last.sender._id;
+  updatePreview(otherId, last.content);
 }
 
 function showMessage(msg) {
@@ -149,89 +143,52 @@ function showMessage(msg) {
   div.innerHTML =
     '<div class="message-bubble">' + escapeHtml(msg.content) + '</div>' +
     '<span class="message-time">' + formatTime(msg.createdAt) + '</span>';
-
   document.getElementById('messagesList').appendChild(div);
 }
 
-function sendMessage(e) {
+async function sendMessage(e) {
   e.preventDefault();
   var input = document.getElementById('messageInput');
   var content = input.value.trim();
-
   if (!content || !selectedUser) return;
 
-  socket.emit('send_message', {
-    receiverId: selectedUser._id,
-    content: content
-  });
-
   input.value = '';
-  stopTyping();
-}
-
-function handleTyping() {
-  if (!selectedUser) return;
-
-  socket.emit('typing', { receiverId: selectedUser._id, isTyping: true });
-
-  clearTimeout(typingTimer);
-  typingTimer = setTimeout(function() {
-    stopTyping();
-  }, 1500);
-}
-
-function stopTyping() {
-  if (!selectedUser) return;
-  socket.emit('typing', { receiverId: selectedUser._id, isTyping: false });
-  clearTimeout(typingTimer);
-}
-
-function filterUsers() {
-  renderUsers();
-}
-
-function updateUserStatus(userId, isOnline) {
-  var user = allUsers.find(function(u) { return u._id === userId; });
-  if (user) {
-    user.isOnline = isOnline;
-    renderUsers();
-  }
-
-  if (selectedUser && selectedUser._id === userId) {
-    selectedUser.isOnline = isOnline;
-    document.getElementById('chatStatus').textContent = isOnline ? 'Online' : 'Offline';
+  const msg = await api('POST', '/api/messages', { receiverId: selectedUser._id, content });
+  if (msg && msg._id) {
+    showMessage(msg);
+    lastMessageTime = msg.createdAt;
+    updatePreview(selectedUser._id, msg.content);
+    scrollDown();
   }
 }
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function updatePreview(userId, content) {
   var el = document.getElementById('preview_' + userId);
-  if (el) {
-    el.textContent = content.length > 25 ? content.slice(0, 25) + '...' : content;
-  }
+  if (el) el.textContent = content.length > 25 ? content.slice(0, 25) + '...' : content;
 }
 
 function scrollDown() {
-  var container = document.getElementById('messagesContainer');
-  container.scrollTop = container.scrollHeight;
+  var c = document.getElementById('messagesContainer');
+  c.scrollTop = c.scrollHeight;
 }
 
 function logout() {
-  if (socket) socket.disconnect();
+  clearInterval(pollInterval);
+  clearInterval(userPollInterval);
+  setOnlineStatus(false);
   localStorage.clear();
   window.location.href = '/';
 }
 
 function escapeHtml(str) {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 function formatTime(dateStr) {
   var d = new Date(dateStr);
-  var h = d.getHours();
-  var m = d.getMinutes();
+  var h = d.getHours(), m = d.getMinutes();
   var ampm = h >= 12 ? 'PM' : 'AM';
   h = h % 12 || 12;
   return h + ':' + (m < 10 ? '0' + m : m) + ' ' + ampm;
