@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ChatApp - Login</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="auth-page">
+
+  <div class="auth-container">
+    <div class="auth-logo">
+      <div class="logo-icon">💬</div>
+      <h1>ChatApp</h1>
+      <p>Real-time chat</p>
+    </div>
+
+    <div class="auth-tabs">
+      <button class="tab-btn active" onclick="switchTab('login', this)">Login</button>
+      <button class="tab-btn" onclick="switchTab('register', this)">Register</button>
+    </div>
+
+    <form id="loginForm" class="auth-form" onsubmit="handleLogin(event)">
+      <div class="input-group">
+        <input type="text" id="loginUsername" placeholder="Username" required />
+      </div>
+      <div class="input-group">
+        <input type="password" id="loginPassword" placeholder="Password" required />
+      </div>
+      <button type="submit" class="btn-primary">Login</button>
+      <p id="loginError" class="error-msg"></p>
+    </form>
+
+    <form id="registerForm" class="auth-form hidden" onsubmit="handleRegister(event)">
+      <div class="input-group">
+        <input type="text" id="regUsername" placeholder="Choose a username" required />
+      </div>
+      <div class="input-group">
+        <input type="password" id="regPassword" placeholder="Choose a password" required />
+      </div>
+      <button type="submit" class="btn-primary">Create Account</button>
+      <p id="registerError" class="error-msg"></p>
+    </form>
+  </div>
+
+  <script>
+    if (localStorage.getItem('token')) {
+      window.location.href = '/chat';
+    }
+
+    function switchTab(tab, btn) {
+      document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      document.querySelectorAll('.auth-form').forEach(function(f) { f.classList.add('hidden'); });
+      document.getElementById(tab + 'Form').classList.remove('hidden');
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      var username = document.getElementById('loginUsername').value;
+      var password = document.getElementById('loginPassword').value;
+      var errEl = document.getElementById('loginError');
+      errEl.textContent = '';
+
+      var res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: username, password: password })
+      });
+
+      var data = await res.json();
+
+      if (!res.ok) {
+        errEl.textContent = data.message;
+        return;
+      }
+
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      window.location.href = '/chat';
+    }
+
+    async function handleRegister(e) {
+      e.preventDefault();
+      var username = document.getElementById('regUsername').value;
+      var password = document.getElementById('regPassword').value;
+      var errEl = document.getElementById('registerError');
+      errEl.textContent = '';
+
+      var res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: username, password: password })
+      });
+
+      var data = await res.json();
+
+      if (!res.ok) {
+        errEl.textContent = data.message;
+        return;
+      }
+
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      window.location.href = '/chat';
+    }
+  </script>
+</body>
+</html>

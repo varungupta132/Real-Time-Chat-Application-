@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ChatApp</title>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body class="chat-page">
+
+  <div class="chat-layout">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="my-avatar" id="myAvatar"></div>
+        <div class="my-info">
+          <span id="myUsername" class="my-name"></span>
+          <span class="online-badge">● Online</span>
+        </div>
+        <button class="logout-btn" onclick="logout()" title="Logout">⏻</button>
+      </div>
+
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="Search users..." oninput="filterUsers()" />
+      </div>
+
+      <div class="users-label">People</div>
+      <ul id="usersList" class="users-list"></ul>
+    </aside>
+
+    <!-- Main chat area -->
+    <main class="chat-main">
+
+      <!-- Shown when no chat is selected -->
+      <div id="emptyState" class="empty-state">
+        <div class="empty-icon">💬</div>
+        <h2>Select a conversation</h2>
+        <p>Pick someone from the left to start chatting</p>
+      </div>
+
+      <!-- Chat window (hidden until user is selected) -->
+      <div id="chatArea" class="chat-area" style="display:none;">
+
+        <div class="chat-header">
+          <div class="chat-header-avatar" id="chatAvatar"></div>
+          <div>
+            <div id="chatUsername" class="chat-username"></div>
+            <div id="chatStatus" class="chat-status"></div>
+          </div>
+        </div>
+
+        <div id="messagesContainer" class="messages-container">
+          <div id="messagesList"></div>
+        </div>
+
+        <div id="typingIndicator" class="typing-indicator" style="display:none;"></div>
+
+        <form class="message-form" onsubmit="sendMessage(event)">
+          <input
+            type="text"
+            id="messageInput"
+            placeholder="Type a message..."
+            autocomplete="off"
+            oninput="handleTyping()"
+            onblur="stopTyping()"
+          />
+          <button type="submit" class="send-btn">Send</button>
+        </form>
+
+      </div>
+    </main>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="chat.js"></script>
+</body>
+</html>
