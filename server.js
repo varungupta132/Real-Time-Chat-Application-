@@ -15,12 +15,12 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: { origin: '*' },
-  transports: ['polling', 'websocket']
+  transports: ['polling', 'websocket'],
+  path: '/socket.io'
 });
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
-
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api', require('./routes/messages'));
 
@@ -28,10 +28,10 @@ app.get('/chat', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'chat.html'));
 });
 
-// Track online users: { userId -> socketId }
+// Track online users
 const onlineUsers = {};
 
-// Socket.io auth middleware
+// Socket.io auth
 io.use((socket, next) => {
   const token = socket.handshake.auth.token;
   if (!token) return next(new Error('No token'));
@@ -52,21 +52,10 @@ io.on('connection', async (socket) => {
 
   socket.on('send_message', async ({ receiverId, content }) => {
     if (!content?.trim()) return;
-
     const roomId = [userId, receiverId].sort().join('_');
-    const message = await Message.create({
-      sender: userId,
-      receiver: receiverId,
-      content: content.trim(),
-      roomId
-    });
-
+    const message = await Message.create({ sender: userId, receiver: receiverId, content: content.trim(), roomId });
     await message.populate('sender receiver', 'username');
-
-    // Send to receiver if online, always echo back to sender
-    if (onlineUsers[receiverId]) {
-      io.to(onlineUsers[receiverId]).emit('new_message', message);
-    }
+    if (onlineUsers[receiverId]) io.to(onlineUsers[receiverId]).emit('new_message', message);
     socket.emit('new_message', message);
   });
 
@@ -83,9 +72,21 @@ io.on('connection', async (socket) => {
   });
 });
 
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => {
-    const port = process.env.PORT || 3000;
-    server.listen(port, () => console.log(`Server running on port ${port}`));
-  })
-  .catch(err => console.error('MongoDB error:', err.message));
+// Connect to MongoDB once (cached for serverless warm instances)
+let isConnected = false;
+async function connectDB() {
+  if (isConnected) return;
+  await mongoose.connect(process.env.MONGO_URI);
+  isConnected = true;
+}
+
+connectDB().catch(err => console.error('MongoDB error:', err.message));
+
+// For local dev
+if (process.env.NODE_ENV !== 'production') {
+  const port = process.env.PORT || 3000;
+  server.listen(port, () => console.log(`Server running on port ${port}`));
+}
+
+// Export for Vercel
+module.exports = server;
