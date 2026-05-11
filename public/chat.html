@@ -3,50 +3,98 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>ChatApp</title>
+  <title>OrgChat</title>
   <link rel="stylesheet" href="style.css"/>
 </head>
 <body class="chat-page">
 
-  <div class="chat-layout">
+  <div class="app-layout">
 
-    <!-- Sidebar -->
+    <!-- ── Sidebar ── -->
     <aside class="sidebar">
-      <div class="sidebar-header">
+
+      <!-- Brand -->
+      <div class="sidebar-brand">
+        <span class="logo-icon small">⬡</span>
+        <span class="logo-text">OrgChat</span>
+      </div>
+
+      <!-- My Profile -->
+      <div class="my-profile">
         <div class="my-avatar" id="myAvatar"></div>
         <div class="my-info">
-          <span id="myUsername" class="my-name"></span>
-          <span class="online-badge">● Online</span>
+          <span id="myName" class="my-name"></span>
+          <span id="myDept" class="my-dept"></span>
         </div>
-        <button class="logout-btn" onclick="logout()" title="Logout">⏻</button>
+        <button class="icon-btn" onclick="logout()" title="Logout">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </button>
       </div>
 
-      <div class="search-box">
-        <input type="text" id="searchInput" placeholder="Search users..." oninput="filterUsers()" />
+      <!-- Search -->
+      <div class="sidebar-search">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="searchInput" placeholder="Search..." oninput="filterSidebar()"/>
       </div>
 
-      <div class="users-label">People</div>
-      <ul id="usersList" class="users-list"></ul>
+      <!-- Channels -->
+      <div class="sidebar-section">
+        <div class="section-header" onclick="toggleSection('channels')">
+          <span>Channels</span>
+          <svg class="chevron" id="chevron-channels" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <ul id="channelsList" class="sidebar-list"></ul>
+      </div>
+
+      <!-- Direct Messages -->
+      <div class="sidebar-section">
+        <div class="section-header" onclick="toggleSection('dms')">
+          <span>Direct Messages</span>
+          <svg class="chevron" id="chevron-dms" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <ul id="dmsList" class="sidebar-list"></ul>
+      </div>
+
+      <!-- Admin Panel (only for admins) -->
+      <div class="sidebar-section" id="adminSection" style="display:none">
+        <div class="section-header" onclick="toggleSection('admin')">
+          <span>Admin</span>
+          <svg class="chevron" id="chevron-admin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <ul id="adminList" class="sidebar-list">
+          <li class="sidebar-item" onclick="openAdmin()">
+            <span class="item-icon">👥</span>
+            <span>Pending Approvals</span>
+            <span id="pendingBadge" class="badge" style="display:none"></span>
+          </li>
+        </ul>
+      </div>
+
     </aside>
 
-    <!-- Main chat area -->
-    <main class="chat-main">
+    <!-- ── Main Area ── -->
+    <main class="main-area">
 
-      <!-- Shown when no chat is selected -->
+      <!-- Empty state -->
       <div id="emptyState" class="empty-state">
-        <div class="empty-icon">💬</div>
-        <h2>Select a conversation</h2>
-        <p>Pick someone from the left to start chatting</p>
+        <div class="empty-illustration">⬡</div>
+        <h2>Welcome to OrgChat</h2>
+        <p>Select a channel or colleague to start communicating</p>
       </div>
 
-      <!-- Chat window (hidden until user is selected) -->
-      <div id="chatArea" class="chat-area" style="display:none;">
+      <!-- Chat window -->
+      <div id="chatArea" class="chat-area" style="display:none">
 
         <div class="chat-header">
-          <div class="chat-header-avatar" id="chatAvatar"></div>
-          <div>
-            <div id="chatUsername" class="chat-username"></div>
-            <div id="chatStatus" class="chat-status"></div>
+          <div class="chat-header-left">
+            <div id="chatIcon" class="chat-icon"></div>
+            <div>
+              <div id="chatTitle" class="chat-title"></div>
+              <div id="chatSubtitle" class="chat-subtitle"></div>
+            </div>
+          </div>
+          <div class="chat-header-right">
+            <div id="onlineCount" class="online-count"></div>
           </div>
         </div>
 
@@ -54,21 +102,26 @@
           <div id="messagesList"></div>
         </div>
 
-        <div id="typingIndicator" class="typing-indicator" style="display:none;"></div>
-
-        <form class="message-form" onsubmit="sendMessage(event)">
-          <input
-            type="text"
-            id="messageInput"
-            placeholder="Type a message..."
-            autocomplete="off"
-            oninput="handleTyping()"
-            onblur="stopTyping()"
-          />
-          <button type="submit" class="send-btn">Send</button>
-        </form>
+        <div class="message-input-area">
+          <form onsubmit="sendMessage(event)" class="message-form">
+            <input type="text" id="messageInput" placeholder="Type a message..." autocomplete="off"/>
+            <button type="submit" class="send-btn">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+          </form>
+        </div>
 
       </div>
+
+      <!-- Admin Panel -->
+      <div id="adminPanel" class="admin-panel" style="display:none">
+        <div class="admin-header">
+          <h2>👥 Pending Approvals</h2>
+          <p>Review and approve new employee registrations</p>
+        </div>
+        <div id="pendingList" class="pending-list"></div>
+      </div>
+
     </main>
   </div>
 
