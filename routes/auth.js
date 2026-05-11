@@ -65,8 +65,31 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Logout
-router.post('/logout', async (req, res) => {
+// One-time setup: creates admin/admin if not exists
+router.get('/setup', async (req, res) => {
+  try {
+    const existing = await User.findOne({ username: 'admin' });
+    if (existing) {
+      // Make sure it's admin role and approved
+      await User.findOneAndUpdate({ username: 'admin' }, { role: 'admin', isApproved: true });
+      return res.json({ message: 'Admin account already exists and has been updated' });
+    }
+    await User.create({
+      name: 'Admin',
+      username: 'admin',
+      email: 'admin@orgchat.com',
+      password: 'admin',
+      role: 'admin',
+      isApproved: true,
+      department: 'General'
+    });
+    res.json({ message: 'Admin created! Username: admin, Password: admin' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+
   try {
     const token = req.headers.authorization?.split(' ')[1];
     if (token) {
