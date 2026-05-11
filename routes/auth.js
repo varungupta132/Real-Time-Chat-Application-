@@ -12,63 +12,85 @@ function signToken(user) {
   );
 }
 
-// Register
+function userPayload(user) {
+  return {
+    id: user._id,
+    name: user.name,
+    username: user.username,
+    role: user.role,
+    department: user.department
+  };
+}
+
+// POST /api/auth/register
 router.post('/register', async (req, res) => {
   try {
     const { name, username, email, password, department } = req.body;
+
     if (!name || !username || !email || !password)
       return res.status(400).json({ message: 'All fields are required' });
 
-    if (await User.findOne({ $or: [{ username }, { email }] }))
-      return res.status(400).json({ message: 'Username or email already exists' });
+    if (username.length < 3)
+      return res.status(400).json({ message: 'Username must be at least 3 characters' });
 
-    const count = await User.countDocuments();
-    const isFirst = count === 0;
+    if (password.length < 4)
+      return res.status(400).json({ message: 'Password must be at least 4 characters' });
+
+    const exists = await User.findOne({ $or: [{ username: username.toLowerCase() }, { email: email.toLowerCase() }] });
+    if (exists) return res.status(400).json({ message: 'Username or email already taken' });
+
+    // First registered user becomes admin (auto-approved)
+    const isFirst = (await User.countDocuments()) === 0;
 
     const user = await User.create({
-      name, username, email, password,
+      name: name.trim(),
+      username: username.toLowerCase().trim(),
+      email: email.toLowerCase().trim(),
+      password,
       department: department || 'General',
       role: isFirst ? 'admin' : 'employee',
       isApproved: isFirst
     });
 
     if (!isFirst) {
-      return res.json({ pending: true, message: 'Registration successful! Waiting for admin approval.' });
+      return res.status(201).json({
+        pending: true,
+        message: 'Account created! Waiting for admin approval.'
+      });
     }
 
-    res.json({
-      token: signToken(user),
-      user: { id: user._id, name: user.name, username: user.username, role: user.role, department: user.department }
-    });
+    res.status(201).json({ token: signToken(user), user: userPayload(user) });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-// Login
+// POST /api/auth/login
 router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
-    const user = await User.findOne({ $or: [{ username }, { email: username }] });
+    if (!username || !password)
+      return res.status(400).json({ message: 'Username and password required' });
+
+    const user = await User.findOne({
+      $or: [{ username: username.toLowerCase() }, { email: username.toLowerCase() }]
+    });
 
     if (!user || !(await user.matchPassword(password)))
-      return res.status(400).json({ message: 'Invalid credentials' });
+      return res.status(400).json({ message: 'Invalid username or password' });
 
     if (!user.isApproved)
       return res.status(403).json({ message: 'Your account is pending admin approval' });
 
     await User.findByIdAndUpdate(user._id, { isOnline: true, lastSeen: new Date() });
 
-    res.json({
-      token: signToken(user),
-      user: { id: user._id, name: user.name, username: user.username, role: user.role, department: user.department }
-    });
+    res.json({ token: signToken(user), user: userPayload(user) });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-// Logout
+// POST /api/auth/logout
 router.post('/logout', async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
@@ -76,26 +98,19 @@ router.post('/logout', async (req, res) => {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       await User.findByIdAndUpdate(decoded.id, { isOnline: false, lastSeen: new Date() });
     }
-    res.json({ ok: true });
-  } catch {
-    res.json({ ok: true });
-  }
+  } catch {}
+  res.json({ ok: true });
 });
 
-// Setup: create or reset admin account (username: admin, password: admin)
+// GET /api/auth/setup  — creates admin account (safe: only works if no admin exists)
 router.get('/setup', async (req, res) => {
   try {
-    const hashed = await bcrypt.hash('admin', 10);
-    const existing = await User.findOne({ username: 'admin' });
-
-    if (existing) {
-      await User.findOneAndUpdate(
-        { username: 'admin' },
-        { role: 'admin', isApproved: true, password: hashed }
-      );
-      return res.json({ message: 'Admin password reset. Username: admin | Password: admin' });
+    const adminExists = await User.findOne({ role: 'admin' });
+    if (adminExists) {
+      return res.status(403).json({ message: 'Admin already exists. Use login.' });
     }
 
+    const hashed = await bcrypt.hash('admin123', 10);
     await User.create({
       name: 'Admin',
       username: 'admin',
@@ -106,7 +121,7 @@ router.get('/setup', async (req, res) => {
       department: 'General'
     });
 
-    res.json({ message: 'Admin created. Username: admin | Password: admin' });
+    res.json({ message: 'Admin created! Login with username: admin | password: admin123' });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

@@ -6,7 +6,7 @@ const path = require('path');
 
 const app = express();
 
-// DB connection cached for serverless warm instances
+// ── DB Connection (cached for Vercel serverless) ───────────────────────────
 let isConnected = false;
 async function connectDB() {
   if (isConnected && mongoose.connection.readyState === 1) return;
@@ -14,39 +14,43 @@ async function connectDB() {
   isConnected = true;
 }
 
-// Ensure DB connected on every request
 app.use(async (req, res, next) => {
   try {
     await connectDB();
     next();
   } catch (err) {
-    console.error('DB connection failed:', err.message);
-    res.status(500).json({ message: 'Database connection failed: ' + err.message });
+    console.error('DB Error:', err.message);
+    res.status(500).json({ message: 'Database connection failed' });
   }
 });
 
+// ── Middleware ─────────────────────────────────────────────────────────────
 app.use(express.json());
 
-// API routes BEFORE static files
+// ── API Routes (before static) ─────────────────────────────────────────────
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api', require('./routes/messages'));
 
-// Health check
+// ── Health Check ───────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', db: mongoose.connection.readyState });
+  res.json({ status: 'ok', db: mongoose.connection.readyState, time: new Date() });
 });
 
-// Static files
+// ── Static Files ───────────────────────────────────────────────────────────
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/chat', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'chat.html'));
 });
 
-// Local dev only
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// ── Local Dev ──────────────────────────────────────────────────────────────
 if (process.env.NODE_ENV !== 'production') {
   const port = process.env.PORT || 3000;
-  app.listen(port, () => console.log(`Server running on port ${port}`));
+  app.listen(port, () => console.log(`Server: http://localhost:${port}`));
 }
 
 module.exports = app;

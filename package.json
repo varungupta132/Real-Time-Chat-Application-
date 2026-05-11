@@ -1,14 +1,15 @@
 {
-  "name": "chat-app",
-  "version": "1.0.0",
+  "name": "orgchat",
+  "version": "2.0.0",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "node server.js"
   },
   "engines": {
     "node": ">=18"
   },
-  "description": "Real-time chat application",
+  "description": "Enterprise internal communication platform",
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "dotenv": "^17.4.1",
