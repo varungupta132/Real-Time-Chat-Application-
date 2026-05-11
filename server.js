@@ -6,7 +6,7 @@ const path = require('path');
 
 const app = express();
 
-// DB connection - cached for serverless
+// DB connection cached for serverless warm instances
 let isConnected = false;
 async function connectDB() {
   if (isConnected && mongoose.connection.readyState === 1) return;
@@ -14,22 +14,30 @@ async function connectDB() {
   isConnected = true;
 }
 
-// Middleware: ensure DB is connected before every request
+// Ensure DB connected on every request
 app.use(async (req, res, next) => {
   try {
     await connectDB();
     next();
   } catch (err) {
     console.error('DB connection failed:', err.message);
-    res.status(500).json({ message: 'Database connection failed' });
+    res.status(500).json({ message: 'Database connection failed: ' + err.message });
   }
 });
 
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
 
+// API routes BEFORE static files
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api', require('./routes/messages'));
+
+// Health check
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', db: mongoose.connection.readyState });
+});
+
+// Static files
+app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/chat', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'chat.html'));
