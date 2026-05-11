@@ -65,20 +65,26 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// One-time setup: creates admin/admin if not exists
+// One-time setup: creates admin/admin if not exists, resets password if exists
 router.get('/setup', async (req, res) => {
   try {
+    const bcrypt = require('bcryptjs');
+    const hashed = await bcrypt.hash('admin', 10);
+
     const existing = await User.findOne({ username: 'admin' });
     if (existing) {
-      // Make sure it's admin role and approved
-      await User.findOneAndUpdate({ username: 'admin' }, { role: 'admin', isApproved: true });
-      return res.json({ message: 'Admin account already exists and has been updated' });
+      await User.findOneAndUpdate(
+        { username: 'admin' },
+        { role: 'admin', isApproved: true, password: hashed }
+      );
+      return res.json({ message: 'Admin password reset to: admin' });
     }
+
     await User.create({
       name: 'Admin',
       username: 'admin',
       email: 'admin@orgchat.com',
-      password: 'admin',
+      password: hashed,
       role: 'admin',
       isApproved: true,
       department: 'General'
