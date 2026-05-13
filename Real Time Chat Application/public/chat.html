@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OrgChat</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="org-info">
+                    <div class="org-icon" id="orgIcon">O</div>
+                    <div class="org-details">
+                        <div class="org-name" id="orgName">Organization</div>
+                        <div class="user-name" id="userName">User</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Channels Section -->
+            <div class="sidebar-section">
+                <div class="section-header" onclick="toggleSection('channels')">
+                    <span class="chevron" id="chevron-channels">▼</span>
+                    <span>Channels</span>
+                </div>
+                <div class="section-list" id="channelsList">
+                    <!-- Channels will be populated here -->
+                </div>
+            </div>
+
+            <!-- Direct Messages Section -->
+            <div class="sidebar-section">
+                <div class="section-header" onclick="toggleSection('dms')">
+                    <span class="chevron" id="chevron-dms">▼</span>
+                    <span>Direct Messages</span>
+                </div>
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="Search people..." oninput="filterSidebar()">
+                </div>
+                <div class="section-list" id="dmsList">
+                    <!-- DMs will be populated here -->
+                </div>
+            </div>
+
+            <!-- Admin Section (only for admins) -->
+            <div class="sidebar-section" id="adminSection" style="display: none;">
+                <div class="section-header admin-header" onclick="openAdmin()">
+                    <span>⚙️ Admin Panel</span>
+                    <span class="pending-badge" id="pendingBadge">0</span>
+                </div>
+            </div>
+
+            <!-- Logout Button -->
+            <div class="sidebar-footer">
+                <button class="logout-btn" onclick="logout()">
+                    <span>🚪</span> Logout
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Chat Area -->
+        <div class="main-content">
+            <!-- Empty State -->
+            <div class="empty-state" id="emptyState">
+                <div class="empty-icon">💬</div>
+                <h2>Welcome to OrgChat!</h2>
+                <p>Select a channel or person to start chatting</p>
+            </div>
+
+            <!-- Chat Area -->
+            <div class="chat-area" id="chatArea" style="display: none;">
+                <div class="chat-header">
+                    <div class="chat-header-left">
+                        <div class="chat-icon" id="chatIcon">#</div>
+                        <div class="chat-info">
+                            <div class="chat-title" id="chatTitle">Channel Name</div>
+                            <div class="chat-subtitle" id="chatSubtitle">
+                                <span id="onlineCount"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="messages-container" id="messagesContainer">
+                    <div class="messages-list" id="messagesList">
+                        <!-- Messages will be populated here -->
+                    </div>
+                </div>
+
+                <div class="message-input-container">
+                    <form id="messageForm" onsubmit="sendMessage(event)">
+                        <input 
+                            type="text" 
+                            id="messageInput" 
+                            placeholder="Type a message..." 
+                            autocomplete="off"
+                            required
+                        >
+                        <button type="submit" class="send-btn">
+                            <span>➤</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Admin Panel -->
+            <div class="admin-panel" id="adminPanel" style="display: none;">
+                <div class="admin-header-bar">
+                    <h2>⚙️ Admin Panel - Pending Approvals</h2>
+                    <button class="close-admin-btn" onclick="closeAdmin()">✕</button>
+                </div>
+                <div class="pending-list" id="pendingList">
+                    <!-- Pending users will be populated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="chat.js"></script>
+</body>
+</html>
