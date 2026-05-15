@@ -3,6 +3,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 app.use(express.json());
@@ -10,18 +11,6 @@ app.use(express.json());
 const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 const User = require('./models/User');
 const Message = require('./models/Message');
-
-// ── Serve static files ────────────────────────────────────────
-app.use(express.static(path.join(__dirname, 'public')));
-
-// ── HTML routes ───────────────────────────────────────────────
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-app.get('/chat', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'chat.html'));
-});
 
 // ── MongoDB (cached for Vercel serverless) ───────────────────
 let cached = global.mongoose || { conn: null, promise: null };
@@ -40,7 +29,7 @@ async function connectDB() {
 // DB middleware only for API routes
 app.use('/api', async (req, res, next) => {
   try { await connectDB(); next(); }
-  catch (e) { res.status(500).json({ message: 'DB failed', error: e.message }); }
+  catch (e) { return res.status(500).json({ message: 'DB failed', error: e.message }); }
 });
 
 // ── Auth Middleware ──────────────────────────────────────────
@@ -50,7 +39,7 @@ function auth(req, res, next) {
     if (!token) return res.status(401).json({ message: 'No token' });
     req.user = jwt.verify(token, JWT_SECRET);
     next();
-  } catch { res.status(401).json({ message: 'Invalid token' }); }
+  } catch { return res.status(401).json({ message: 'Invalid token' }); }
 }
 
 function dmRoom(a, b) { return [a, b].sort().join('__'); }
@@ -66,7 +55,7 @@ app.post('/api/register', async (req, res) => {
     const user = await User.create({ username, password });
     const token = jwt.sign({ id: user._id, username: user.username }, JWT_SECRET, { expiresIn: '7d' });
     res.json({ token, username: user.username });
-  } catch (e) { res.status(500).json({ message: 'Server error' }); }
+  } catch (e) { return res.status(500).json({ message: 'Server error', error: e.message }); }
 });
 
 app.post('/api/login', async (req, res) => {
@@ -77,14 +66,14 @@ app.post('/api/login', async (req, res) => {
       return res.status(400).json({ message: 'Invalid username or password' });
     const token = jwt.sign({ id: user._id, username: user.username }, JWT_SECRET, { expiresIn: '7d' });
     res.json({ token, username: user.username });
-  } catch (e) { res.status(500).json({ message: 'Server error' }); }
+  } catch (e) { return res.status(500).json({ message: 'Server error', error: e.message }); }
 });
 
 app.get('/api/users', auth, async (req, res) => {
   try {
     const users = await User.find({ username: { $ne: req.user.username } }).select('username').sort({ username: 1 });
     res.json(users);
-  } catch (e) { res.status(500).json({ message: 'Server error' }); }
+  } catch (e) { return res.status(500).json({ message: 'Server error', error: e.message }); }
 });
 
 app.get('/api/messages', auth, async (req, res) => {
@@ -92,7 +81,7 @@ app.get('/api/messages', auth, async (req, res) => {
     const room = req.query.with ? dmRoom(req.user.username, req.query.with) : 'global';
     const msgs = await Message.find({ room }).sort({ createdAt: -1 }).limit(50);
     res.json(msgs.reverse());
-  } catch (e) { res.status(500).json({ message: 'Server error' }); }
+  } catch (e) { return res.status(500).json({ message: 'Server error', error: e.message }); }
 });
 
 app.get('/api/messages/poll', auth, async (req, res) => {
@@ -101,7 +90,7 @@ app.get('/api/messages/poll', auth, async (req, res) => {
     const query = { room };
     if (req.query.since) query.createdAt = { $gt: new Date(req.query.since) };
     res.json(await Message.find(query).sort({ createdAt: 1 }));
-  } catch (e) { res.status(500).json({ message: 'Server error' }); }
+  } catch (e) { return res.status(500).json({ message: 'Server error', error: e.message }); }
 });
 
 app.post('/api/messages', auth, async (req, res) => {
@@ -111,12 +100,28 @@ app.post('/api/messages', auth, async (req, res) => {
     const room = to ? dmRoom(req.user.username, to) : 'global';
     const msg = await Message.create({ sender: req.user.username, text: text.trim(), room });
     res.json(msg);
-  } catch (e) { res.status(500).json({ message: 'Server error' }); }
+  } catch (e) { return res.status(500).json({ message: 'Server error', error: e.message }); }
 });
 
-// ── 404 Handler ──────────────────────────────────────────────
-app.use((req, res) => {
-  res.status(404).json({ message: 'Route not found' });
+// ── HTML routes (must be AFTER API routes) ───────────────────
+app.get('/chat', (req, res) => {
+  try {
+    const html = fs.readFileSync(path.join(__dirname, 'public', 'chat.html'), 'utf8');
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
+  } catch (e) {
+    res.status(500).send('Error loading chat page');
+  }
+});
+
+app.get('/', (req, res) => {
+  try {
+    const html = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
+  } catch (e) {
+    res.status(500).send('Error loading page');
+  }
 });
 
 // ── Local dev ────────────────────────────────────────────────
