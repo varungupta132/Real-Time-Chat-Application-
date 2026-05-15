@@ -13,11 +13,17 @@ const User = require('./models/User');
 const Message = require('./models/Message');
 
 // ── Serve HTML FIRST (before DB middleware) ──────────────────
-const indexHTML = fs.readFileSync(path.join(__dirname, 'public', 'index.html'));
-const chatHTML  = fs.readFileSync(path.join(__dirname, 'public', 'chat.html'));
+app.get('/', (req, res) => {
+  res.setHeader('Content-Type', 'text/html');
+  const indexHTML = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
+  res.send(indexHTML);
+});
 
-app.get('/',     (req, res) => res.setHeader('Content-Type', 'text/html').end(indexHTML));
-app.get('/chat', (req, res) => res.setHeader('Content-Type', 'text/html').end(chatHTML));
+app.get('/chat', (req, res) => {
+  res.setHeader('Content-Type', 'text/html');
+  const chatHTML = fs.readFileSync(path.join(__dirname, 'public', 'chat.html'), 'utf8');
+  res.send(chatHTML);
+});
 
 // ── MongoDB (cached for Vercel serverless) ───────────────────
 let cached = global.mongoose || { conn: null, promise: null };
