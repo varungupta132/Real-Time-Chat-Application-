@@ -115,6 +115,11 @@ app.post('/api/messages', auth, async (req, res) => {
   } catch (e) { res.status(500).json({ message: 'Server error' }); }
 });
 
+// ── 404 Handler ──────────────────────────────────────────────
+app.use((req, res) => {
+  res.status(404).json({ message: 'Route not found' });
+});
+
 // ── Local dev ────────────────────────────────────────────────
 if (process.env.NODE_ENV !== 'production') {
   const PORT = process.env.PORT || 3000;
