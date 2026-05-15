@@ -2,7 +2,6 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
-const fs = require('fs');
 const path = require('path');
 
 const app = express();
@@ -12,17 +11,16 @@ const JWT_SECRET = process.env.JWT_SECRET || 'secret123';
 const User = require('./models/User');
 const Message = require('./models/Message');
 
-// ── Serve HTML FIRST (before DB middleware) ──────────────────
+// ── Serve static files ────────────────────────────────────────
+app.use(express.static(path.join(__dirname, 'public')));
+
+// ── HTML routes ───────────────────────────────────────────────
 app.get('/', (req, res) => {
-  res.setHeader('Content-Type', 'text/html');
-  const indexHTML = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
-  res.send(indexHTML);
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 app.get('/chat', (req, res) => {
-  res.setHeader('Content-Type', 'text/html');
-  const chatHTML = fs.readFileSync(path.join(__dirname, 'public', 'chat.html'), 'utf8');
-  res.send(chatHTML);
+  res.sendFile(path.join(__dirname, 'public', 'chat.html'));
 });
 
 // ── MongoDB (cached for Vercel serverless) ───────────────────
