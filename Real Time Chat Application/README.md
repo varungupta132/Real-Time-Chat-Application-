@@ -1,39 +1,16 @@
-# 🚀 OrgChat - Organizational Chat Application
+# 💬 Real-Time Chat Application
 
-A beautiful, real-time organizational chat application built with Node.js, Express, MongoDB, and vanilla JavaScript. Features include organization-based access control, admin approval system, direct messaging, and department channels.
+A simple, beautiful real-time chat application built with Node.js, Express, MongoDB, and vanilla JavaScript. Features include global chat, direct messaging, and real-time updates.
 
 ## ✨ Features
 
-### 🔐 Authentication & Authorization
-- **Organization-based registration** - Users register with their organization name
-- **Admin approval system** - First user becomes admin, subsequent users need approval
-- **Secure JWT authentication**
-- **Role-based access control** (Admin/User)
-
-### 💬 Messaging
-- **Direct Messages** - Private 1-on-1 conversations with team members
-- **Department Channels** - Public channels for each department
-- **Real-time updates** - Messages update automatically every 2 seconds
-- **Online status indicators** - See who's online in real-time
-
-### 👥 User Management
-- **User directory** - View all approved users in your organization
-- **Search functionality** - Quickly find team members
-- **Department organization** - Users organized by departments
-- **Profile information** - Name, email, department, and online status
-
-### ⚙️ Admin Panel
-- **Pending approvals** - View all users waiting for approval
-- **Approve/Reject users** - One-click approval or rejection
-- **Real-time badge** - Shows count of pending approvals
-- **Organization management** - Manage all users in your organization
-
-### 🎨 Beautiful UI
-- **Slack-inspired design** - Modern, professional interface
-- **Gradient colors** - Beautiful purple gradient theme
-- **Responsive layout** - Works on desktop and mobile
-- **User avatars** - Color-coded initials for each user
-- **Smooth animations** - Polished user experience
+- 🔐 **User Authentication** - Secure registration and login with JWT
+- 💬 **Global Chat** - Public chat room for all users
+- 📨 **Direct Messages** - Private 1-on-1 conversations
+- 🔄 **Real-time Updates** - Messages update automatically via polling
+- 👥 **User List** - See all registered users
+- 🎨 **Modern UI** - Clean, responsive design with dark theme
+- 🚀 **Serverless Ready** - Optimized for Vercel deployment
 
 ## 🛠️ Tech Stack
 
@@ -42,14 +19,14 @@ A beautiful, real-time organizational chat application built with Node.js, Expre
 - **Authentication**: JWT (JSON Web Tokens)
 - **Password Security**: bcryptjs
 - **Frontend**: Vanilla JavaScript, HTML5, CSS3
-- **Deployment**: Vercel-ready
+- **Deployment**: Vercel
 
 ## 📦 Installation
 
 1. **Clone the repository**
 ```bash
-git clone <your-repo-url>
-cd chat-app
+git clone https://github.com/varungupta132/Real-Time-Chat-Application-.git
+cd Real-Time-Chat-Application-
 ```
 
 2. **Install dependencies**
@@ -79,175 +56,92 @@ http://localhost:3000
 
 ## 🚀 Deployment on Vercel
 
-1. **Install Vercel CLI** (if not already installed)
+1. **Push to GitHub**
 ```bash
-npm i -g vercel
+git add .
+git commit -m "Initial commit"
+git push origin main
 ```
 
-2. **Deploy**
-```bash
-vercel
-```
+2. **Deploy on Vercel**
+- Go to [vercel.com](https://vercel.com)
+- Import your GitHub repository
+- Add environment variables:
+  - `MONGO_URI`
+  - `JWT_SECRET`
+  - `NODE_ENV=production`
+- Deploy!
 
-3. **Set environment variables in Vercel**
-- Go to your project settings on Vercel
-- Add `MONGO_URI` and `JWT_SECRET` in Environment Variables
+## 📖 Usage
 
-## 📖 Usage Guide
-
-### First Time Setup
-
-1. **Register as First User**
-   - Go to the registration page
-   - Enter your details with your organization name (e.g., "GLA University")
-   - Select your department
-   - You'll be automatically approved as the **Admin**
-
-2. **Admin Responsibilities**
-   - Check the Admin Panel regularly for pending approvals
-   - Approve or reject new user requests
-   - Manage organization members
-
-### For Regular Users
-
-1. **Register**
-   - Fill in the registration form
-   - Use the **exact same organization name** as your admin
-   - Wait for admin approval
-
-2. **After Approval**
-   - Login with your credentials
-   - Browse department channels
-   - Start direct messages with team members
-   - Update your online status automatically
-
-### Messaging
-
-**Channels:**
-- Click on any department channel (e.g., #engineering)
-- Send messages visible to all organization members
-- See who sent each message with their department
-
-**Direct Messages:**
-- Click on any user in the Direct Messages section
-- Have private conversations
-- See online/offline status
-- Search for users using the search box
+1. **Register** - Create a new account with username and password
+2. **Login** - Sign in with your credentials
+3. **Global Chat** - Start chatting with everyone in the global room
+4. **Direct Messages** - Click on any user to start a private conversation
+5. **Real-time** - Messages update automatically without refresh
 
 ## 🏗️ Project Structure
 
 ```
-chat-app/
+Real-Time-Chat-Application/
 ├── models/
-│   ├── User.js          # User schema with organization & approval
-│   └── Message.js       # Message schema for DMs and channels
-├── routes/
-│   ├── auth.js          # Authentication routes
-│   ├── admin.js         # Admin panel routes
-│   └── messages.js      # Messaging routes
-├── middleware/
-│   └── auth.js          # JWT verification middleware
+│   ├── User.js          # User schema with password hashing
+│   └── Message.js       # Message schema for chat
 ├── public/
 │   ├── index.html       # Login/Register page
-│   ├── chat.html        # Main chat interface
-│   ├── chat.js          # Frontend JavaScript
-│   └── style.css        # Styles
-├── server.js            # Express server setup
-├── vercel.json          # Vercel configuration
+│   └── chat.html        # Main chat interface
+├── server.js            # Express server with API routes
+├── vercel.json          # Vercel deployment config
 ├── package.json         # Dependencies
-└── .env                 # Environment variables
+├── .env                 # Environment variables (not in git)
+└── .gitignore           # Git ignore rules
 ```
 
-## 🔑 Key Features Explained
+## 🔑 API Endpoints
 
-### Organization-Based Access
-- Users can only see and message people in their organization
-- Each organization is isolated from others
-- First user of an organization becomes admin automatically
+### Authentication
+- `POST /api/register` - Register new user
+- `POST /api/login` - Login user
 
-### Admin Approval Flow
-1. User registers → Status: "pending"
-2. Admin sees request in Admin Panel
-3. Admin approves → User can login
-4. Admin rejects → User cannot access
+### Users
+- `GET /api/users` - Get all users (requires auth)
 
-### Real-time Updates
-- Messages poll every 2 seconds for new content
-- User list updates every 15 seconds
-- Online status updates on login/logout
-- Pending approvals update in real-time
-
-## 🎨 Departments
-
-Pre-configured departments:
-- General
-- Engineering
-- Design
-- Marketing
-- Sales
-- HR
-- Finance
-- Operations
-
-Each department has its own channel for team communication.
+### Messages
+- `GET /api/messages` - Get messages (global or DM)
+- `GET /api/messages/poll` - Poll for new messages
+- `POST /api/messages` - Send a message
 
 ## 🔒 Security Features
 
 - Passwords hashed with bcryptjs
 - JWT tokens for authentication
-- Protected routes with middleware
-- Organization-based data isolation
-- Input validation and sanitization
-- XSS protection with HTML escaping
+- Protected API routes
+- Input validation
+- XSS protection
 
 ## 🐛 Troubleshooting
 
-**Admin can't see pending users:**
-- Make sure you're logged in as admin (first user of organization)
-- Check that new users used the exact same organization name
-- Refresh the admin panel
+**Can't connect to MongoDB:**
+- Check your `MONGO_URI` in environment variables
+- Ensure MongoDB Atlas allows connections from your IP
 
 **Messages not updating:**
-- Check your internet connection
-- Ensure MongoDB is connected
 - Check browser console for errors
+- Verify JWT token is valid
+- Check network tab for API calls
 
-**Can't login after registration:**
-- If you're not the first user, wait for admin approval
-- Check that you're using correct credentials
-- Verify your account status with admin
+**Deployment issues:**
+- Ensure all environment variables are set in Vercel
+- Check Vercel deployment logs
+- Verify `vercel.json` configuration
 
-## 📝 API Endpoints
+## 📝 License
 
-### Authentication
-- `POST /api/auth/register` - Register new user
-- `POST /api/auth/login` - Login user
-- `GET /api/auth/verify` - Verify JWT token
-- `POST /api/auth/logout` - Logout user
-
-### Admin
-- `GET /api/admin/pending` - Get pending users
-- `POST /api/admin/approve/:userId` - Approve user
-- `DELETE /api/admin/reject/:userId` - Reject user
-
-### Messaging
-- `GET /api/users` - Get all users in organization
-- `POST /api/messages` - Send direct message
-- `GET /api/messages/:userId` - Get DM history
-- `POST /api/channel/:channelName` - Send channel message
-- `GET /api/channel/:channelName` - Get channel messages
-
-## 🤝 Contributing
-
-Feel free to fork this project and submit pull requests!
-
-## 📄 License
-
-MIT License - feel free to use this project for learning or production!
+MIT License - feel free to use this project!
 
 ## 👨‍💻 Author
 
-Built with ❤️ for organizational communication
+Built by Varun Gupta
 
 ---
 
