@@ -37,7 +37,8 @@ async function connectDB() {
   await cached.promise;
 }
 
-app.use(async (req, res, next) => {
+// DB middleware only for API routes
+app.use('/api', async (req, res, next) => {
   try { await connectDB(); next(); }
   catch (e) { res.status(500).json({ message: 'DB failed', error: e.message }); }
 });
