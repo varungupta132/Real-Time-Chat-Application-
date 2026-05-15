@@ -4,6 +4,7 @@
   "main": "server.js",
   "scripts": { "start": "node server.js" },
   "engines": { "node": "20.x" },
+  "volta": { "node": "20.9.0" },
   "dependencies": {
     "bcryptjs": "2.4.3",
     "dotenv": "16.4.5",
